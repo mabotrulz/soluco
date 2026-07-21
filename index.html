@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Capitão Soluço e o Barba-de-Fogo</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none; }
+  html, body { height:100%; overflow:hidden; background:#082a3a;
+    font-family:'Baloo 2','Comic Sans MS','Chalkboard SE',system-ui,sans-serif; }
+  #app { position:fixed; inset:0; max-width:520px; margin:0 auto; overflow:hidden;
+    background:linear-gradient(165deg,#0e4a66 0%,#0a3550 45%,#062338 100%); }
+  .screen { position:absolute; inset:0; display:none; flex-direction:column; }
+  .screen.on { display:flex; }
+
+  .btn { border:none; cursor:pointer; font-family:inherit; font-weight:800; color:#5a3a00;
+    background:linear-gradient(180deg,#ffd93b,#f5a623); border-radius:999px;
+    padding:16px 34px; font-size:clamp(18px,5vw,24px);
+    box-shadow:0 5px 0 #c47f17,0 8px 16px rgba(0,0,0,.35); transition:transform .08s; }
+  .btn:active { transform:translateY(4px); box-shadow:0 1px 0 #c47f17; }
+  .icon-btn { width:52px; height:52px; min-width:52px; border-radius:50%; border:none; cursor:pointer;
+    background:rgba(255,255,255,.92); font-size:24px; display:flex; align-items:center; justify-content:center;
+    box-shadow:0 3px 8px rgba(0,0,0,.3); }
+  .icon-btn:active { transform:scale(.92); }
+
+  /* start overlay */
+  #start { align-items:center; justify-content:center; gap:26px; text-align:center; padding:24px;
+    background:radial-gradient(circle at 50% 20%,#16688c 0%,#082a3a 70%); z-index:30; }
+  #start h1 { color:#ffd93b; font-size:clamp(26px,7vw,38px); line-height:1.15; text-shadow:0 3px 0 rgba(0,0,0,.4); }
+  #start p { color:#bfe8ff; font-size:clamp(15px,4.2vw,19px); font-weight:700; }
+
+  /* menu */
+  #menu { z-index:5; }
+  #menuBg { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; opacity:.55; }
+  #menuInner { position:relative; flex:1; display:flex; flex-direction:column; align-items:center;
+    justify-content:center; gap:22px; padding:28px; }
+  #menuTitle { color:#fff; font-size:clamp(24px,6.5vw,34px); text-align:center; line-height:1.2;
+    text-shadow:0 3px 0 rgba(0,0,0,.5); }
+  #badges { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
+  .badge-slot { width:56px; height:56px; border-radius:50%; background:rgba(255,255,255,.14);
+    border:2px dashed rgba(255,255,255,.4); display:flex; align-items:center; justify-content:center; font-size:28px; }
+  .badge-slot.earned { background:rgba(255,217,59,.25); border:2px solid #ffd93b; box-shadow:0 0 14px rgba(255,217,59,.5); }
+  #badgeCount { color:#bfe8ff; font-weight:800; font-size:16px; text-shadow:0 2px 0 rgba(0,0,0,.4); }
+
+  /* story page */
+  #page { background:#041a26; }
+  #pageImg { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+  .hud-row { position:absolute; left:0; right:0; display:flex; justify-content:space-between; padding:12px; z-index:5; }
+  .hud-top { top:0; }
+  .hud-bottom { bottom:0; align-items:flex-end; }
+  #nextBtn { width:64px; height:64px; border-radius:50%; border:none; cursor:pointer;
+    background:linear-gradient(180deg,#ffd93b,#f5a623); font-size:28px; color:#5a3a00; font-weight:900;
+    box-shadow:0 4px 0 #c47f17,0 8px 16px rgba(0,0,0,.4); animation:pulse 1.8s infinite; }
+  #nextBtn:active { transform:scale(.92); }
+  @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.08)} }
+
+  /* choice screen */
+  #choice { background:linear-gradient(165deg,#0e4a66,#062338); }
+  #choiceBody { flex:1; min-height:0; display:flex; flex-direction:column; padding:64px 16px 10px; gap:14px; }
+  .choices { flex:1; min-height:0; display:flex; flex-direction:column; gap:12px; width:100%; max-width:420px; margin:0 auto; }
+  .choice { flex:1; min-height:0; border-radius:20px; overflow:hidden; background:#041a26;
+    box-shadow:0 4px 14px rgba(0,0,0,.35); border:4px solid transparent; transition:transform .15s,border-color .15s; cursor:pointer; }
+  .choice img { width:100%; height:100%; object-fit:cover; display:block; }
+  .choice.lit { border-color:#ffd93b; transform:scale(1.04); box-shadow:0 0 22px rgba(255,217,59,.65); }
+  .choice:active { transform:scale(.97); }
+  #choiceHud { display:flex; justify-content:space-between; padding:10px 14px 14px; }
+
+  /* celebration */
+  #celebrate { align-items:center; justify-content:center; gap:16px; text-align:center; padding:24px; z-index:20;
+    background:radial-gradient(circle at 50% 25%,#16688c 0%,#082a3a 75%); }
+  #celebBadge { font-size:92px; filter:drop-shadow(0 6px 12px rgba(0,0,0,.4)); animation:pop .5s; }
+  #celebTitle { color:#ffd93b; font-size:clamp(26px,7vw,36px); text-shadow:0 3px 0 rgba(0,0,0,.4); }
+  #celebSub { color:#bfe8ff; font-weight:800; font-size:clamp(15px,4.4vw,19px); }
+  @keyframes pop { 0%{transform:scale(0)} 70%{transform:scale(1.2)} 100%{transform:scale(1)} }
+  .confetti { position:absolute; top:-8vh; font-size:26px; animation:fall linear forwards; z-index:1; pointer-events:none; }
+  @keyframes fall { to { transform:translateY(118vh) rotate(720deg); } }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div class="screen on" id="start">
+    <h1>🏴‍☠️ Capitão Soluço<br>e o Barba-de-Fogo</h1>
+    <p>Uma aventura com muitos caminhos e cinco finais!</p>
+    <button class="btn" id="startBtn">▶ COMEÇAR</button>
+  </div>
+
+  <div class="screen" id="menu">
+    <img id="menuBg" src="assets/menu.jpg" alt="">
+    <div id="menuInner">
+      <div id="menuTitle">Capitão Soluço<br>e o Barba-de-Fogo</div>
+      <div id="badges"></div>
+      <div id="badgeCount"></div>
+      <button class="btn" id="playBtn">⚓ JOGAR</button>
+    </div>
+  </div>
+
+  <div class="screen" id="page">
+    <img id="pageImg" alt="">
+    <div class="hud-row hud-top"><button class="icon-btn" id="pageHome">🏠</button></div>
+    <div class="hud-row hud-bottom">
+      <button class="icon-btn" id="replayBtn">🔊</button>
+      <button id="nextBtn">➜</button>
+    </div>
+  </div>
+
+  <div class="screen" id="choice">
+    <div class="hud-row hud-top"><button class="icon-btn" id="choiceHome">🏠</button></div>
+    <div id="choiceBody"><div class="choices" id="choices"></div></div>
+    <div id="choiceHud"><button class="icon-btn" id="choiceReplay">🔊</button><span></span></div>
+  </div>
+
+  <div class="screen" id="celebrate">
+    <div id="celebBadge"></div>
+    <div id="celebTitle"></div>
+    <div id="celebSub"></div>
+    <button class="btn" id="menuBtn">🏴‍☠️ MENU</button>
+  </div>
+
+</div>
+<script src="stories.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+
+// ---------- state ----------
+let curId = START_NODE;
+let flags = new Set();
+let answered = false;
+let badges = [];
+try { badges = JSON.parse(localStorage.getItem('soluco_badges') || '[]'); } catch(e) {}
+
+// ---------- screens ----------
+function show(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('on'));
+  $(name).classList.add('on');
+}
+
+// ---------- speech ----------
+let VOICE = null;
+function pickVoice() {
+  const vs = speechSynthesis.getVoices().filter(v => v.lang && v.lang.toLowerCase().startsWith('pt'));
+  VOICE = vs.find(v => /pt[-_]PT/i.test(v.lang)) || vs[0] || null;
+}
+speechSynthesis.onvoiceschanged = pickVoice;
+pickVoice();
+
+let narrGen = 0;
+function speak(text, opts = {}) {
+  const gen = narrGen;
+  return new Promise(resolve => {
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    if (VOICE) u.voice = VOICE;
+    u.lang = 'pt-PT';
+    u.rate = opts.rate || 0.95;
+    u.pitch = 1.1;
+    u.onend = u.onerror = () => resolve(gen === narrGen);
+    speechSynthesis.speak(u);
+  });
+}
+function speakSeq(parts, onPart) {
+  const gen = narrGen;
+  return new Promise(resolve => {
+    let i = 0;
+    const step = () => {
+      if (gen !== narrGen) return resolve(false);
+      if (i >= parts.length) return resolve(true);
+      const u = new SpeechSynthesisUtterance(parts[i]);
+      if (VOICE) u.voice = VOICE;
+      u.lang = 'pt-PT'; u.rate = 0.95; u.pitch = 1.1;
+      const idx = i;
+      u.onstart = () => { if (gen === narrGen && onPart) onPart(idx); };
+      u.onend = u.onerror = () => { i++; step(); };
+      speechSynthesis.speak(u);
+    };
+    step();
+  });
+}
+function stopSpeak() { narrGen++; speechSynthesis.cancel(); }
+
+// ---------- audio blips ----------
+let AC = null;
+function blip(freq = 880, dur = 0.12, type = 'sine', when = 0) {
+  if (!AC) return;
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.type = type; o.frequency.value = freq;
+  g.gain.setValueAtTime(0.18, AC.currentTime + when);
+  g.gain.exponentialRampToValueAtTime(0.001, AC.currentTime + when + dur);
+  o.connect(g).connect(AC.destination);
+  o.start(AC.currentTime + when); o.stop(AC.currentTime + when + dur + 0.02);
+}
+const sfxOk   = () => { blip(660,.12); blip(880,.14,'sine',.12); blip(1320,.2,'sine',.26); };
+const sfxStar = () => { blip(1046,.1); blip(1318,.1,'sine',.1); blip(1568,.18,'sine',.2); };
+
+// ---------- menu ----------
+function buildMenu() {
+  const b = $('badges');
+  b.innerHTML = '';
+  ALL_BADGES.forEach(badge => {
+    const d = document.createElement('div');
+    d.className = 'badge-slot' + (badges.includes(badge) ? ' earned' : '');
+    d.textContent = badges.includes(badge) ? badge : '?';
+    b.appendChild(d);
+  });
+  $('badgeCount').textContent = `${badges.length} de ${ALL_BADGES.length} finais encontrados!`;
+}
+function showMenu() { buildMenu(); show('menu'); }
+
+// ---------- story flow ----------
+function startRun() {
+  flags = new Set();
+  curId = START_NODE;
+  showNode(curId);
+}
+function showNode(id) {
+  curId = id;
+  const n = NODES[id];
+  if (n.ending) return showEnding(n);
+  $('pageImg').src = `assets/n/${n.img}.jpg`;
+  show('page');
+  stopSpeak();
+  const gen = narrGen;
+  setTimeout(() => { if (gen === narrGen) speak(n.say); }, 350);
+}
+$('nextBtn').onclick = () => {
+  blip();
+  stopSpeak();
+  const n = NODES[curId];
+  if (n.decision) showDecision(n);
+  else if (n.next) showNode(n.next);
+};
+$('replayBtn').onclick = () => { blip(); speak(NODES[curId].say); };
+$('pageHome').onclick = () => { blip(); stopSpeak(); showMenu(); };
+
+// ---------- decisions ----------
+function visibleOptions(n) {
+  let opts = n.decision.options.filter(o => !o.needs || flags.has(o.needs));
+  if (n.decision.finale && opts.length > 3) {
+    const unlocked = opts.filter(o => o.needs);
+    const base = opts.filter(o => !o.needs);
+    opts = [...unlocked, ...base].slice(0, 3);
+  }
+  return opts;
+}
+function showDecision(n) {
+  answered = false;
+  const opts = visibleOptions(n);
+  const g = $('choices');
+  g.innerHTML = '';
+  opts.forEach((o, i) => {
+    const d = document.createElement('div');
+    d.className = 'choice';
+    d.innerHTML = `<img src="assets/n/${NODES[o.next].img}.jpg" alt="">`;
+    d.onclick = () => pick(d, o);
+    g.appendChild(d);
+  });
+  show('choice');
+  narrateDecision(n.decision.ask, opts);
+}
+function narrateDecision(ask, opts) {
+  stopSpeak();
+  const gen = narrGen;
+  const g = $('choices');
+  setTimeout(async () => {
+    if (gen !== narrGen) return;
+    const ok = await speak(ask);
+    if (!ok || gen !== narrGen) return;
+    await speakSeq(opts.map(o => o.say), i => {
+      const el = g.children[i]; if (el) el.classList.add('lit');
+    });
+    if (gen === narrGen) [...g.children].forEach(el => el.classList.remove('lit'));
+  }, 300);
+}
+function pick(el, o) {
+  if (answered) return;
+  answered = true;
+  stopSpeak();
+  el.classList.add('lit');
+  sfxOk();
+  if (o.set) flags.add(o.set);
+  const gen = narrGen;
+  speak(o.say + '!');
+  setTimeout(() => { if (gen === narrGen) showNode(o.next); }, 1200);
+}
+$('choiceReplay').onclick = () => {
+  if (answered) return;
+  blip();
+  narrateDecision(NODES[curId].decision.ask, visibleOptions(NODES[curId]));
+};
+$('choiceHome').onclick = () => { blip(); stopSpeak(); showMenu(); };
+
+// ---------- endings ----------
+function showEnding(n) {
+  show('page');
+  $('pageImg').src = `assets/n/${n.img}.jpg`;
+  stopSpeak();
+  const gen = narrGen;
+  setTimeout(async () => {
+    if (gen !== narrGen) return;
+    const ok = await speak(n.say);
+    if (!ok || gen !== narrGen) return;
+    await new Promise(r => setTimeout(r, 400));
+    if (gen !== narrGen) return;
+    celebrate(n.ending);
+  }, 350);
+}
+function celebrate(ending) {
+  const isNew = !badges.includes(ending.badge);
+  if (isNew) {
+    badges.push(ending.badge);
+    localStorage.setItem('soluco_badges', JSON.stringify(badges));
+  }
+  $('celebBadge').textContent = ending.badge;
+  $('celebTitle').textContent = ending.name + (isNew ? '!' : '!');
+  $('celebSub').textContent = isNew
+    ? `Final novo! Tens ${badges.length} de ${ALL_BADGES.length} finais!`
+    : `Já conhecias este final! Tens ${badges.length} de ${ALL_BADGES.length}.`;
+  show('celebrate');
+  sfxStar();
+  speak(isNew ? `Encontraste um final novo: ${ending.name}!` : `O final ${ending.name}, outra vez!`);
+  for (let i = 0; i < 26; i++) {
+    const c = document.createElement('div');
+    c.className = 'confetti';
+    c.textContent = ['🎉','⭐','💛','⚓','✨','🦜'][i % 6];
+    c.style.left = Math.random() * 100 + 'vw';
+    c.style.animationDuration = (1.6 + Math.random() * 1.8) + 's';
+    c.style.animationDelay = (Math.random() * 0.8) + 's';
+    $('celebrate').appendChild(c);
+    setTimeout(() => c.remove(), 4200);
+  }
+}
+$('menuBtn').onclick = () => { blip(); stopSpeak(); showMenu(); };
+
+// ---------- start ----------
+$('startBtn').onclick = () => {
+  AC = new (window.AudioContext || window.webkitAudioContext)();
+  blip();
+  speak('Capitão Soluço e o Barba-de-Fogo! Carrega em jogar!');
+  showMenu();
+};
+$('playBtn').onclick = () => { blip(); stopSpeak(); startRun(); };
+</script>
+</body>
+</html>
