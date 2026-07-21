@@ -154,7 +154,11 @@ function speak(text, opts = {}) {
     u.lang = 'pt-PT';
     u.rate = opts.rate || 0.95;
     u.pitch = 1.1;
-    u.onend = u.onerror = () => resolve(gen === narrGen);
+    let done = false;
+    const finish = () => { if (done) return; done = true; resolve(gen === narrGen); };
+    u.onend = u.onerror = finish;
+    // fallback: some mobile browsers drop utterances after cancel() and never fire onend/onerror
+    setTimeout(finish, 900 + text.length * 110);
     speechSynthesis.speak(u);
   });
 }
@@ -226,6 +230,7 @@ $('nextBtn').onclick = () => {
   blip();
   stopSpeak();
   const n = NODES[curId];
+  if (n.ending) { celebrate(n.ending); return; }
   if (n.decision) showDecision(n);
   else if (n.next) showNode(n.next);
 };
