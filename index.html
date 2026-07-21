@@ -52,6 +52,7 @@
     background:linear-gradient(180deg,#ffd93b,#f5a623); font-size:28px; color:#5a3a00; font-weight:900;
     box-shadow:0 4px 0 #c47f17,0 8px 16px rgba(0,0,0,.4); animation:pulse 1.8s infinite; }
   #nextBtn:active { transform:scale(.92); }
+  #nextBtn.locked { opacity:.35; animation:none; transform:none; pointer-events:none; }
   @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.08)} }
 
   /* choice screen */
@@ -174,13 +175,31 @@ function speakSeq(parts, onPart) {
       u.lang = 'pt-PT'; u.rate = 0.95; u.pitch = 1.1;
       const idx = i;
       u.onstart = () => { if (gen === narrGen && onPart) onPart(idx); };
-      u.onend = u.onerror = () => { i++; step(); };
+      let done = false;
+      const next = () => { if (done) return; done = true; i++; step(); };
+      u.onend = u.onerror = next;
+      // fallback: dropped utterances on mobile must never stall the sequence (or the UI lock)
+      setTimeout(next, 900 + parts[idx].length * 110);
       speechSynthesis.speak(u);
     };
     step();
   });
 }
 function stopSpeak() { narrGen++; speechSynthesis.cancel(); }
+
+// ---------- voice gate: no skipping or picking until narration ends ----------
+// uiLock is owned by the current narration flow (paired with narrGen):
+// a superseded flow never unlocks — the flow that replaced it owns the lock.
+let uiLock = false;
+function lockUI() {
+  uiLock = true;
+  $('nextBtn').classList.add('locked');
+}
+function unlockUI(gen) {
+  if (gen !== narrGen) return; // superseded — new owner manages the lock
+  uiLock = false;
+  $('nextBtn').classList.remove('locked');
+}
 
 // ---------- audio blips ----------
 let AC = null;
@@ -222,11 +241,17 @@ function showNode(id) {
   if (n.ending) return showEnding(n);
   $('pageImg').src = `assets/n/${n.img}.jpg`;
   show('page');
+  lockUI();
   stopSpeak();
   const gen = narrGen;
-  setTimeout(() => { if (gen === narrGen) speak(n.say); }, 350);
+  setTimeout(async () => {
+    if (gen !== narrGen) return;
+    await speak(n.say);
+    unlockUI(gen);
+  }, 350);
 }
 $('nextBtn').onclick = () => {
+  if (uiLock) return; // listen first, then skip
   blip();
   stopSpeak();
   const n = NODES[curId];
@@ -234,7 +259,15 @@ $('nextBtn').onclick = () => {
   if (n.decision) showDecision(n);
   else if (n.next) showNode(n.next);
 };
-$('replayBtn').onclick = () => { blip(); speak(NODES[curId].say); };
+$('replayBtn').onclick = async () => {
+  if (uiLock) return;
+  blip();
+  lockUI();
+  stopSpeak();
+  const gen = narrGen;
+  await speak(NODES[curId].say);
+  unlockUI(gen);
+};
 $('pageHome').onclick = () => { blip(); stopSpeak(); showMenu(); };
 
 // ---------- decisions ----------
@@ -263,6 +296,7 @@ function showDecision(n) {
   narrateDecision(n.decision.ask, opts);
 }
 function narrateDecision(ask, opts) {
+  lockUI();
   stopSpeak();
   const gen = narrGen;
   const g = $('choices');
@@ -270,14 +304,15 @@ function narrateDecision(ask, opts) {
     if (gen !== narrGen) return;
     const ok = await speak(ask);
     if (!ok || gen !== narrGen) return;
-    await speakSeq(opts.map(o => o.say), i => {
+    const okSeq = await speakSeq(opts.map(o => o.say), i => {
       const el = g.children[i]; if (el) el.classList.add('lit');
     });
     if (gen === narrGen) [...g.children].forEach(el => el.classList.remove('lit'));
+    if (okSeq) unlockUI(gen);
   }, 300);
 }
 function pick(el, o) {
-  if (answered) return;
+  if (answered || uiLock) return;
   answered = true;
   stopSpeak();
   el.classList.add('lit');
@@ -288,7 +323,7 @@ function pick(el, o) {
   setTimeout(() => { if (gen === narrGen) showNode(o.next); }, 1200);
 }
 $('choiceReplay').onclick = () => {
-  if (answered) return;
+  if (answered || uiLock) return;
   blip();
   narrateDecision(NODES[curId].decision.ask, visibleOptions(NODES[curId]));
 };
@@ -298,12 +333,14 @@ $('choiceHome').onclick = () => { blip(); stopSpeak(); showMenu(); };
 function showEnding(n) {
   show('page');
   $('pageImg').src = `assets/n/${n.img}.jpg`;
+  lockUI();
   stopSpeak();
   const gen = narrGen;
   setTimeout(async () => {
     if (gen !== narrGen) return;
     const ok = await speak(n.say);
     if (!ok || gen !== narrGen) return;
+    unlockUI(gen);
     await new Promise(r => setTimeout(r, 400));
     if (gen !== narrGen) return;
     celebrate(n.ending);
