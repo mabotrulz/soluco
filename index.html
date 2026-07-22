@@ -80,13 +80,7 @@
 <body>
 <div id="app">
 
-  <div class="screen on" id="start">
-    <h1>🏴‍☠️ Capitão Soluço<br>e o Barba-de-Fogo</h1>
-    <p>Uma aventura com muitos caminhos e cinco finais!</p>
-    <button class="btn" id="startBtn">▶ COMEÇAR</button>
-  </div>
-
-  <div class="screen" id="menu">
+  <div class="screen on" id="menu">
     <img id="menuBg" src="assets/menu.jpg" alt="">
     <div id="menuInner">
       <div id="menuTitle">Capitão Soluço<br>e o Barba-de-Fogo</div>
@@ -373,14 +367,14 @@ function celebrate(ending) {
 }
 $('menuBtn').onclick = () => { blip(); stopSpeak(); showMenu(); };
 
-// ---------- start ----------
-$('startBtn').onclick = () => {
-  AC = new (window.AudioContext || window.webkitAudioContext)();
+// ---------- start: menu is the entry point; the JOGAR tap unlocks audio ----------
+$('playBtn').onclick = () => {
+  if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
   blip();
-  speak('Capitão Soluço e o Barba-de-Fogo! Carrega em jogar!');
-  showMenu();
+  stopSpeak();
+  startRun();
 };
-$('playBtn').onclick = () => { blip(); stopSpeak(); startRun(); };
+showMenu(); // build badges on first load
 </script>
 </body>
 </html>
